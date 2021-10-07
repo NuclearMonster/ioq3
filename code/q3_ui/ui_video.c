@@ -270,6 +270,7 @@ typedef struct {
 	menulist_s  	lighting;
 	menulist_s  	allow_extensions;
 	menulist_s  	texturebits;
+	menulist_s  	colordepth;
 	menulist_s  	geometry;
 	menulist_s  	filter;
 	menutext_s		driverinfo;
@@ -284,6 +285,7 @@ typedef struct
 	qboolean fullscreen;
 	int tq;
 	int lighting;
+	int colordepth;
 	int texturebits;
 	int geometry;
 	int filter;
@@ -297,22 +299,22 @@ static graphicsoptions_t		s_graphicsoptions;
 static InitialVideoOptions_s s_ivo_templates[] =
 {
 	{
-		6, qtrue, 3, 0, 2, 2, 1, 0, qtrue
+		6, qtrue, 3, 0, 2, 2, 2, 1, 0, qtrue
 	},
 	{
-		4, qtrue, 2, 0, 2, 1, 1, 0, qtrue	// JDC: this was tq 3
+		4, qtrue, 2, 0, 2, 2, 1, 1, 0, qtrue	// JDC: this was tq 3
 	},
 	{
-		3, qtrue, 2, 0, 0, 1, 0, 0, qtrue
+		3, qtrue, 2, 0, 0, 0, 1, 0, 0, qtrue
 	},
 	{
-		2, qtrue, 1, 0, 0, 0, 0, 0, qtrue
+		2, qtrue, 1, 0, 1, 0, 0, 0, 0, qtrue
 	},
 	{
-		2, qtrue, 1, 1, 0, 0, 0, 0, qtrue
+		2, qtrue, 1, 1, 1, 0, 0, 0, 0, qtrue
 	},
 	{
-		3, qtrue, 1, 0, 0, 1, 0, 0, qtrue
+		3, qtrue, 1, 0, 0, 0, 1, 0, 0, qtrue
 	}
 };
 
@@ -356,6 +358,7 @@ static int resToRatio[ MAX_RESOLUTIONS ];
 
 static char resbuf[ MAX_STRING_CHARS ];
 static const char* detectedResolutions[ MAX_RESOLUTIONS ];
+static char currentResolution[ 20 ];
 
 static const char** resolutions = builtinResolutions;
 static qboolean resolutionsDetected = qfalse;
@@ -466,6 +469,7 @@ GraphicsOptions_GetInitialVideo
 */
 static void GraphicsOptions_GetInitialVideo( void )
 {
+	s_ivo.colordepth  = s_graphicsoptions.colordepth.curvalue;
 	s_ivo.driver      = s_graphicsoptions.driver.curvalue;
 	s_ivo.mode        = s_graphicsoptions.mode.curvalue;
 	s_ivo.fullscreen  = s_graphicsoptions.fs.curvalue;
@@ -484,7 +488,7 @@ GraphicsOptions_GetResolutions
 */
 static void GraphicsOptions_GetResolutions( void )
 {
-	Q_strncpyz(resbuf, UI_Cvar_VariableString("r_availableModes"), sizeof(resbuf));
+	trap_Cvar_VariableStringBuffer("r_availableModes", resbuf, sizeof(resbuf));
 	if(*resbuf)
 	{
 		char* s = resbuf;
@@ -498,11 +502,26 @@ static void GraphicsOptions_GetResolutions( void )
 		}
 		detectedResolutions[ i ] = NULL;
 
-		if( i > 0 )
+		// add custom resolution if not in mode list
+		if ( i < ARRAY_LEN(detectedResolutions)-1 )
 		{
-			resolutions = detectedResolutions;
-			resolutionsDetected = qtrue;
+			Com_sprintf( currentResolution, sizeof ( currentResolution ), "%dx%d", uis.glconfig.vidWidth, uis.glconfig.vidHeight );
+
+			for( i = 0; detectedResolutions[ i ]; i++ )
+			{
+				if ( strcmp( detectedResolutions[ i ], currentResolution ) == 0 )
+					break;
+			}
+
+			if ( detectedResolutions[ i ] == NULL )
+			{
+				detectedResolutions[ i++ ] = currentResolution;
+				detectedResolutions[ i ] = NULL;
+			}
 		}
+
+		resolutions = detectedResolutions;
+		resolutionsDetected = qtrue;
 	}
 }
 
@@ -517,6 +536,8 @@ static void GraphicsOptions_CheckConfig( void )
 
 	for ( i = 0; i < NUM_IVO_TEMPLATES-1; i++ )
 	{
+		if ( s_ivo_templates[i].colordepth != s_graphicsoptions.colordepth.curvalue )
+			continue;
 		if ( s_ivo_templates[i].driver != s_graphicsoptions.driver.curvalue )
 			continue;
 		if ( GraphicsOptions_FindDetectedResolution(s_ivo_templates[i].mode) != s_graphicsoptions.mode.curvalue )
@@ -552,10 +573,21 @@ static void GraphicsOptions_UpdateMenuItems( void )
 	{
 		s_graphicsoptions.fs.curvalue = 1;
 		s_graphicsoptions.fs.generic.flags |= QMF_GRAYED;
+		s_graphicsoptions.colordepth.curvalue = 1;
 	}
 	else
 	{
 		s_graphicsoptions.fs.generic.flags &= ~QMF_GRAYED;
+	}
+
+	if ( s_graphicsoptions.fs.curvalue == 0 || s_graphicsoptions.driver.curvalue == 1 )
+	{
+		s_graphicsoptions.colordepth.curvalue = 0;
+		s_graphicsoptions.colordepth.generic.flags |= QMF_GRAYED;
+	}
+	else
+	{
+		s_graphicsoptions.colordepth.generic.flags &= ~QMF_GRAYED;
 	}
 
 	if ( s_graphicsoptions.allow_extensions.curvalue == 0 )
@@ -585,6 +617,10 @@ static void GraphicsOptions_UpdateMenuItems( void )
 		s_graphicsoptions.apply.generic.flags &= ~(QMF_HIDDEN|QMF_INACTIVE);
 	}
 	if ( s_ivo.lighting != s_graphicsoptions.lighting.curvalue )
+	{
+		s_graphicsoptions.apply.generic.flags &= ~(QMF_HIDDEN|QMF_INACTIVE);
+	}
+	if ( s_ivo.colordepth != s_graphicsoptions.colordepth.curvalue )
 	{
 		s_graphicsoptions.apply.generic.flags &= ~(QMF_HIDDEN|QMF_INACTIVE);
 	}
@@ -659,11 +695,24 @@ static void GraphicsOptions_ApplyChanges( void *unused, int notification )
 		trap_Cvar_SetValue( "r_mode", s_graphicsoptions.mode.curvalue );
 
 	trap_Cvar_SetValue( "r_fullscreen", s_graphicsoptions.fs.curvalue );
-
-	trap_Cvar_Reset("r_colorbits");
-	trap_Cvar_Reset("r_depthbits");
-	trap_Cvar_Reset("r_stencilbits");
-
+	switch ( s_graphicsoptions.colordepth.curvalue )
+	{
+	case 0:
+		trap_Cvar_SetValue( "r_colorbits", 0 );
+		trap_Cvar_SetValue( "r_depthbits", 0 );
+		trap_Cvar_Reset( "r_stencilbits" );
+		break;
+	case 1:
+		trap_Cvar_SetValue( "r_colorbits", 16 );
+		trap_Cvar_SetValue( "r_depthbits", 16 );
+		trap_Cvar_SetValue( "r_stencilbits", 0 );
+		break;
+	case 2:
+		trap_Cvar_SetValue( "r_colorbits", 32 );
+		trap_Cvar_SetValue( "r_depthbits", 24 );
+		trap_Cvar_SetValue( "r_stencilbits", 8 );
+		break;
+	}
 	trap_Cvar_SetValue( "r_vertexLight", s_graphicsoptions.lighting.curvalue );
 
 	if ( s_graphicsoptions.geometry.curvalue == 2 )
@@ -733,6 +782,7 @@ static void GraphicsOptions_Event( void* ptr, int event ) {
 			resToRatio[ s_graphicsoptions.mode.curvalue ];
 		s_graphicsoptions.tq.curvalue          = ivo->tq;
 		s_graphicsoptions.lighting.curvalue    = ivo->lighting;
+		s_graphicsoptions.colordepth.curvalue  = ivo->colordepth;
 		s_graphicsoptions.texturebits.curvalue = ivo->texturebits;
 		s_graphicsoptions.geometry.curvalue    = ivo->geometry;
 		s_graphicsoptions.filter.curvalue      = ivo->filter;
@@ -884,6 +934,29 @@ static void GraphicsOptions_SetMenuItems( void )
 	{
 		s_graphicsoptions.geometry.curvalue = 2;
 	}
+
+	switch ( ( int ) trap_Cvar_VariableValue( "r_colorbits" ) )
+	{
+	default:
+	case 0:
+		s_graphicsoptions.colordepth.curvalue = 0;
+		break;
+	case 16:
+		s_graphicsoptions.colordepth.curvalue = 1;
+		break;
+	case 32:
+		s_graphicsoptions.colordepth.curvalue = 2;
+		break;
+	}
+
+	if ( s_graphicsoptions.fs.curvalue == 0 )
+	{
+		s_graphicsoptions.colordepth.curvalue = 0;
+	}
+	if ( s_graphicsoptions.driver.curvalue == 1 )
+	{
+		s_graphicsoptions.colordepth.curvalue = 1;
+	}
 }
 
 /*
@@ -923,6 +996,14 @@ void GraphicsOptions_MenuInit( void )
 	{
 		"Lightmap",
 		"Vertex",
+		NULL
+	};
+
+	static const char *colordepth_names[] =
+	{
+		"Default",
+		"16 bit",
+		"32 bit",
 		NULL
 	};
 
@@ -1073,6 +1154,15 @@ void GraphicsOptions_MenuInit( void )
 	s_graphicsoptions.mode.generic.id       = ID_MODE;
 	y += BIGCHAR_HEIGHT+2;
 
+	// references "r_colorbits"
+	s_graphicsoptions.colordepth.generic.type     = MTYPE_SPINCONTROL;
+	s_graphicsoptions.colordepth.generic.name     = "Color Depth:";
+	s_graphicsoptions.colordepth.generic.flags    = QMF_PULSEIFFOCUS|QMF_SMALLFONT;
+	s_graphicsoptions.colordepth.generic.x        = 400;
+	s_graphicsoptions.colordepth.generic.y        = y;
+	s_graphicsoptions.colordepth.itemnames        = colordepth_names;
+	y += BIGCHAR_HEIGHT+2;
+
 	// references/modifies "r_fullscreen"
 	s_graphicsoptions.fs.generic.type     = MTYPE_SPINCONTROL;
 	s_graphicsoptions.fs.generic.name	  = "Fullscreen:";
@@ -1174,6 +1264,7 @@ void GraphicsOptions_MenuInit( void )
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.allow_extensions );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.ratio );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.mode );
+	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.colordepth );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.fs );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.lighting );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.geometry );
