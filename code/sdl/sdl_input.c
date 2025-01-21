@@ -503,7 +503,10 @@ static void IN_InitJoystick( void )
 		Q_strcat(buf, sizeof(buf), "\n");
 	}
 
-	Cvar_Get( "in_availableJoysticks", buf, CVAR_ROM );
+	Cvar_Get( "in_availableJoysticks", "", CVAR_ROM );
+
+	// Update cvar on in_restart or controller add/remove.
+	Cvar_Set( "in_availableJoysticks", buf );
 
 	if( !in_joystick->integer ) {
 		Com_DPrintf( "Joystick is not active.\n" );
@@ -657,7 +660,14 @@ static void IN_GamepadMove( void )
 		qboolean pressed = SDL_GameControllerGetButton(gamepad, SDL_CONTROLLER_BUTTON_A + i);
 		if (pressed != stick_state.buttons[i])
 		{
-			Com_QueueEvent(in_eventTime, SE_KEY, K_PAD0_A + i, pressed, 0, NULL);
+#if SDL_VERSION_ATLEAST( 2, 0, 14 )
+			if ( i >= SDL_CONTROLLER_BUTTON_MISC1 ) {
+				Com_QueueEvent(in_eventTime, SE_KEY, K_PAD0_MISC1 + i - SDL_CONTROLLER_BUTTON_MISC1, pressed, 0, NULL);
+			} else
+#endif
+			{
+				Com_QueueEvent(in_eventTime, SE_KEY, K_PAD0_A + i, pressed, 0, NULL);
+			}
 			stick_state.buttons[i] = pressed;
 		}
 	}
@@ -1158,6 +1168,28 @@ static void IN_ProcessEvents( void )
 				}
 				break;
 
+#if defined(PROTOCOL_HANDLER) && defined(__APPLE__)
+			case SDL_DROPFILE:
+				{
+					char *filename = e.drop.file;
+
+					// Handle macOS open URL event. URL protocol scheme must be set in Info.plist.
+					if( !Q_strncmp( filename, PROTOCOL_HANDLER ":", strlen( PROTOCOL_HANDLER ":" ) ) )
+					{
+						char *protocolCommand = Sys_ParseProtocolUri( filename );
+
+						if( protocolCommand )
+						{
+							Cbuf_ExecuteText( EXEC_APPEND, va( "%s\n", protocolCommand ) );
+							free( protocolCommand );
+						}
+					}
+
+					SDL_free( filename );
+				}
+				break;
+#endif
+
 			default:
 				break;
 		}
@@ -1239,6 +1271,10 @@ void IN_Init( void *windowData )
 
 	in_joystick = Cvar_Get( "in_joystick", "0", CVAR_ARCHIVE|CVAR_LATCH );
 	in_joystickThreshold = Cvar_Get( "joy_threshold", "0.15", CVAR_ARCHIVE );
+
+#if defined(PROTOCOL_HANDLER) && defined(__APPLE__)
+	SDL_EventState( SDL_DROPFILE, SDL_ENABLE );
+#endif
 
 	SDL_StartTextInput( );
 

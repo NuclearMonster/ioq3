@@ -3,6 +3,8 @@ Makefile.local
 *.swp
 *tags
 *~
+/.vscode/
+/baseq3
 
 # OS X
 ####################
@@ -13,6 +15,7 @@ Makefile.local
 .DS_Store
 .LSOverride
 Icon?
+make-macosx-values.local
 
 # Xcode
 ####################
