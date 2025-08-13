@@ -36,7 +36,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #endif
 
 #ifndef DEDICATED
-#ifdef USE_LOCAL_HEADERS
+#ifdef USE_INTERNAL_SDL_HEADERS
 #	include "SDL.h"
 #	include "SDL_cpuinfo.h"
 #else
@@ -797,7 +797,7 @@ int main( int argc, char **argv )
 	{
 		Sys_Dialog( DT_ERROR, va( "SDL version " MINSDL_VERSION " or greater is required, "
 			"but only version %d.%d.%d was found. You may be able to obtain a more recent copy "
-			"from http://www.libsdl.org/.", ver.major, ver.minor, ver.patch ), "SDL Library Too Old" );
+			"from https://www.libsdl.org/.", ver.major, ver.minor, ver.patch ), "SDL Library Too Old" );
 
 		Sys_Exit( 1 );
 	}
