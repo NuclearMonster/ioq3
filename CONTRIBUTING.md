@@ -12,7 +12,7 @@ The following is a set of guidelines for contributing to ioquake3 which is hoste
     * [Reasoning](#reasoning)
     * [Responsibility](#responsibility)
     * [What about translation tools, for non-English speakers?](#what-about-translation-tools-for-non-english-speakers)
-
+  * [Unsure where to begin contributing to ioquake3?](#unsure-where-to-begin-contributing-to-ioquake3)
   * [Reporting Bugs](#reporting-bugs)
     * [Before Submitting A Bug Report](#before-submitting-a-bug-report)
     * [How Do I Submit A (Good) Bug Report?](#how-do-i-submit-a-good-bug-report)
@@ -86,7 +86,7 @@ The only acceptable use is with human language translation services for facilita
 between people. Google translate, DeepL, and so on, are acceptable for these uses.
 
 
-Unsure where to begin contributing to ioquake3?
+### Unsure where to begin contributing to ioquake3?
 
 Check out our issues and pull requests, you can review and make new suggestions.
 
@@ -94,7 +94,7 @@ We also have a label called [new contributor](https://github.com/ioquake/ioq3/is
 
 ### Reporting Bugs
 
-This section guides you through submitting a bug report for ioquake3. Following these guidelines helps maintainers and the community understand your report :pencil:, reproduce the behavior :computer: :computer:, and find related reports :mag_right:.
+This section guides you through submitting a bug report for ioquake3. Following these guidelines helps maintainers and the community understand your report :pencil:, reproduce the behavior :computer:, and find related reports :mag_right:.
 
 Before creating bug reports, please check [this list](#before-submitting-a-bug-report) as you might find out that you don't need to create one. When you are creating a bug report, please [include as many details as possible](#how-do-i-submit-a-good-bug-report). Fill out [the required template](ISSUE_TEMPLATE.md), the information it asks for helps us resolve issues faster.
 
